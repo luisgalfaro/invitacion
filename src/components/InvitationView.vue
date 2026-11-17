@@ -34,6 +34,7 @@ import {
   fetchConfigFromGoogleSheets,
   submitRsvpToGoogleSheets,
   resolveImageUrl,
+  resolveScriptUrl,
 } from '../utils/invitationStore';
 
 const config = ref<InvitationConfig>(structuredClone(DEFAULT_CONFIG));
@@ -273,8 +274,8 @@ onMounted(async () => {
   timerInterval = setInterval(updateCountdown, 1000);
 
   const params = new URLSearchParams(window.location.search);
-  const apiParam = params.get('api');
-  const targetScriptUrl = apiParam || config.value.googleScriptUrl;
+  const scriptParam = params.get('s') || params.get('api') || '';
+  const targetScriptUrl = resolveScriptUrl(scriptParam || config.value.googleScriptUrl);
 
   if (targetScriptUrl) {
     isLoadingCloud.value = true;
@@ -302,6 +303,16 @@ onUnmounted(() => {
     class="min-h-dvh transition-colors duration-500"
     style="background-color: var(--color-bg); color: var(--color-text)"
   >
+    <!-- Pantalla de carga mientras sincroniza datos reales desde Google Sheets en el teléfono -->
+    <div
+      v-if="isLoadingCloud"
+      class="fixed inset-0 z-50 flex flex-col items-center justify-center gap-4 px-4 text-center"
+      style="background-color: var(--color-bg); color: var(--color-text)"
+    >
+      <Sparkles class="h-10 w-10 animate-pulse" style="color: var(--color-primary)" />
+      <p class="font-serif-elegant text-2xl italic">Abriendo tu invitación especial...</p>
+    </div>
+
     <!-- Botón flotante para ir al Panel de Administrador (Solo visible si NO hay parámetros en la ruta) -->
     <div v-if="showAdminButton" class="fixed top-3 right-3 z-50 sm:top-4 sm:right-4">
       <a

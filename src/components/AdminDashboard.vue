@@ -48,6 +48,7 @@ import {
   syncConfigToGoogleSheets,
   fetchRsvpsFromGoogleSheets,
   resolveImageUrl,
+  extractScriptId,
 } from '../utils/invitationStore';
 
 type TabId = 'invitados' | 'respuestas' | 'evento' | 'detalles' | 'diseno' | 'sheets';
@@ -117,7 +118,10 @@ function saveAllChanges() {
   saveLocalConfig(config.value);
   saveLocalGuests(guests.value);
   saveLocalRsvps(rsvps.value);
-  showToast('Cambios guardados correctamente en el navegador.', 'success');
+  if (config.value.googleScriptUrl) {
+    syncConfigToGoogleSheets(config.value.googleScriptUrl, config.value).catch(() => {});
+  }
+  showToast('Cambios guardados correctamente.', 'success');
 }
 
 async function saveAndSyncCloud() {
@@ -264,6 +268,9 @@ function buildGuestLink(guest: GuestItem): string {
   url.searchParams.set('pases', String(guest.pases));
   if (guest.mesa && guest.mesa.trim()) {
     url.searchParams.set('mesa', guest.mesa.trim());
+  }
+  if (config.value.googleScriptUrl && config.value.googleScriptUrl.trim()) {
+    url.searchParams.set('s', extractScriptId(config.value.googleScriptUrl));
   }
   return url.toString();
 }

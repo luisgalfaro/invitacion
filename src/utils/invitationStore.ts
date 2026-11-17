@@ -405,7 +405,7 @@ export const DEFAULT_CONFIG: InvitationConfig = {
 
   whatsappConfirmacion: '50370000000',
   fechaLimiteConfirmacion: '5 de Diciembre de 2026',
-  googleScriptUrl: '',
+  googleScriptUrl: (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_GOOGLE_SCRIPT_URL) || '',
 };
 
 export const DEFAULT_GUESTS: GuestItem[] = [
@@ -500,6 +500,32 @@ export function resolveImageUrl(url: string): string {
   }
 
   return trimmed;
+}
+
+/**
+ * Extrae el ID corto del Web App de Google Apps Script para pasarlo en los links de invitados (?s=ID)
+ * Ej: https://script.google.com/macros/s/AKfycbx123/exec -> AKfycbx123
+ */
+export function extractScriptId(scriptUrl: string): string {
+  if (!scriptUrl) return '';
+  const trimmed = scriptUrl.trim();
+  const match = trimmed.match(/\/macros\/s\/([a-zA-Z0-9_-]+)/);
+  if (match && match[1]) {
+    return match[1];
+  }
+  return trimmed;
+}
+
+/**
+ * Reconstruye la URL completa de Google Apps Script a partir de un ID corto o URL completa
+ */
+export function resolveScriptUrl(idOrUrl: string): string {
+  if (!idOrUrl) return '';
+  const trimmed = idOrUrl.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+    return trimmed;
+  }
+  return `https://script.google.com/macros/s/${trimmed}/exec`;
 }
 
 export function mergeWithDefaultConfig(parsed: any): InvitationConfig {
