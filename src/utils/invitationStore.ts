@@ -270,6 +270,9 @@ export const QUOTE_TEMPLATES = {
   biblico3Autor: 'Jeremías 29:11',
 };
 
+export const ENV_GOOGLE_SCRIPT_URL: string =
+  (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_GOOGLE_SCRIPT_URL) || '';
+
 export const DEFAULT_CONFIG: InvitationConfig = {
   tipoEvento: 'xv',
   tituloPortada: 'Mis Quince Años',
@@ -405,7 +408,7 @@ export const DEFAULT_CONFIG: InvitationConfig = {
 
   whatsappConfirmacion: '50370000000',
   fechaLimiteConfirmacion: '5 de Diciembre de 2026',
-  googleScriptUrl: (typeof import.meta !== 'undefined' && import.meta.env?.PUBLIC_GOOGLE_SCRIPT_URL) || '',
+  googleScriptUrl: ENV_GOOGLE_SCRIPT_URL,
 };
 
 export const DEFAULT_GUESTS: GuestItem[] = [
@@ -534,6 +537,9 @@ export function mergeWithDefaultConfig(parsed: any): InvitationConfig {
   return {
     ...base,
     ...parsed,
+    googleScriptUrl:
+      (typeof parsed.googleScriptUrl === 'string' && parsed.googleScriptUrl.trim()) ||
+      base.googleScriptUrl,
     padresQuinceanera: {
       ...base.padresQuinceanera,
       ...(parsed.padresQuinceanera || {}),
@@ -615,9 +621,18 @@ export async function syncConfigToGoogleSheets(
   if (!scriptUrl) {
     return { ok: false, message: 'No se ha configurado la URL de Google Apps Script.' };
   }
+  const trimmed = scriptUrl.trim();
+  if (trimmed.includes('docs.google.com/spreadsheets')) {
+    return {
+      ok: false,
+      message:
+        'Pegaste el enlace de la hoja de Google Sheets. Debes pegar la URL de la Aplicación Web de Apps Script que termina en /exec.',
+    };
+  }
   try {
-    const response = await fetch(scriptUrl, {
+    const response = await fetch(trimmed, {
       method: 'POST',
+      redirect: 'follow',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify({
         action: 'saveConfig',
@@ -626,13 +641,13 @@ export async function syncConfigToGoogleSheets(
     });
     const data = await response.json();
     if (data && data.ok) {
-      return { ok: true, message: 'Configuración guardada en Google Sheets correctamente.' };
+      return { ok: true, message: '¡Configuración sincronizada en Google Sheets correctamente!' };
     }
     return { ok: false, message: data?.message || 'Error al guardar en Google Sheets.' };
   } catch (err: any) {
     return {
       ok: false,
-      message: `No se pudo conectar con Google Sheets: ${err?.message || 'Error de red'}`,
+      message: `No se pudo conectar con Google Sheets. Verifica que la URL termine en /exec y tenga acceso para "Cualquier persona".`,
     };
   }
 }
@@ -641,10 +656,17 @@ export async function fetchConfigFromGoogleSheets(
   scriptUrl: string
 ): Promise<InvitationConfig | null> {
   if (!scriptUrl) return null;
+  const trimmed = scriptUrl.trim();
+  if (trimmed.includes('docs.google.com/spreadsheets')) return null;
   try {
-    const url = new URL(scriptUrl);
+    const url = new URL(trimmed);
     url.searchParams.set('action', 'getConfig');
-    const response = await fetch(url.toString(), { method: 'GET' });
+    url.searchParams.set('t', String(Date.now()));
+    const response = await fetch(url.toString(), {
+      method: 'GET',
+      redirect: 'follow',
+      cache: 'no-store',
+    });
     const data = await response.json();
     if (data && data.ok && data.config) {
       return mergeWithDefaultConfig(data.config);

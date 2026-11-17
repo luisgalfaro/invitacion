@@ -35,10 +35,11 @@ import {
   submitRsvpToGoogleSheets,
   resolveImageUrl,
   resolveScriptUrl,
+  ENV_GOOGLE_SCRIPT_URL,
 } from '../utils/invitationStore';
 
 const config = ref<InvitationConfig>(structuredClone(DEFAULT_CONFIG));
-const isLoadingCloud = ref(false);
+const isLoadingCloud = ref(true);
 
 // Datos personalizados leídos por parámetros de la URL (?invitado=...&pases=...&mesa=...)
 const guestParamName = ref('Familia e Invitados Especiales');
@@ -275,7 +276,9 @@ onMounted(async () => {
 
   const params = new URLSearchParams(window.location.search);
   const scriptParam = params.get('s') || params.get('api') || '';
-  const targetScriptUrl = resolveScriptUrl(scriptParam || config.value.googleScriptUrl);
+  const targetScriptUrl = resolveScriptUrl(
+    scriptParam || config.value.googleScriptUrl || ENV_GOOGLE_SCRIPT_URL
+  );
 
   if (targetScriptUrl) {
     isLoadingCloud.value = true;
@@ -288,8 +291,8 @@ onMounted(async () => {
       saveLocalConfig(config.value);
       updateCountdown();
     }
-    isLoadingCloud.value = false;
   }
+  isLoadingCloud.value = false;
 });
 
 onUnmounted(() => {

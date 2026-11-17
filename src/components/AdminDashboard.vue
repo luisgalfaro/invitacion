@@ -46,9 +46,11 @@ import {
   loadLocalRsvps,
   saveLocalRsvps,
   syncConfigToGoogleSheets,
+  fetchConfigFromGoogleSheets,
   fetchRsvpsFromGoogleSheets,
   resolveImageUrl,
   extractScriptId,
+  ENV_GOOGLE_SCRIPT_URL,
 } from '../utils/invitationStore';
 
 type TabId = 'invitados' | 'respuestas' | 'evento' | 'detalles' | 'diseno' | 'sheets';
@@ -269,7 +271,11 @@ function buildGuestLink(guest: GuestItem): string {
   if (guest.mesa && guest.mesa.trim()) {
     url.searchParams.set('mesa', guest.mesa.trim());
   }
-  if (config.value.googleScriptUrl && config.value.googleScriptUrl.trim()) {
+  if (
+    config.value.googleScriptUrl &&
+    config.value.googleScriptUrl.trim() &&
+    config.value.googleScriptUrl.trim() !== ENV_GOOGLE_SCRIPT_URL
+  ) {
     url.searchParams.set('s', extractScriptId(config.value.googleScriptUrl));
   }
   return url.toString();
@@ -429,10 +435,22 @@ async function copyAppsScriptCode() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
   config.value = loadLocalConfig();
   guests.value = loadLocalGuests();
   rsvps.value = loadLocalRsvps();
+
+  const targetUrl = config.value.googleScriptUrl || ENV_GOOGLE_SCRIPT_URL;
+  if (targetUrl) {
+    const remoteConfig = await fetchConfigFromGoogleSheets(targetUrl);
+    if (remoteConfig) {
+      config.value = {
+        ...remoteConfig,
+        googleScriptUrl: targetUrl,
+      };
+      saveLocalConfig(config.value);
+    }
+  }
 });
 </script>
 
@@ -622,6 +640,31 @@ onMounted(() => {
     </div>
 
     <main class="mx-auto max-w-7xl px-3 pt-5 sm:px-6 sm:pt-8">
+      <!-- Aviso importante si aún no ha conectado Google Sheets -->
+      <div
+        v-if="!config.googleScriptUrl || !config.googleScriptUrl.includes('/exec')"
+        class="mb-6 flex flex-col gap-3 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-xs text-amber-950 shadow-2xs sm:flex-row sm:items-center sm:justify-between sm:text-sm"
+      >
+        <div class="flex items-start gap-3">
+          <AlertCircleIcon class="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+          <div>
+            <p class="font-bold">
+              Atención: Tus cambios solo están guardados en esta PC por ahora
+            </p>
+            <p class="mt-0.5 text-xs text-amber-800">
+              Para que los cambios se vean al abrir el link desde tu <strong>teléfono</strong> u otros dispositivos en Netlify, debes pegar tu URL de Google Apps Script (que termina en <code>/exec</code>) en la pestaña <strong>6. Google Sheets</strong> y presionar <strong>Guardar</strong>.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          @click="selectTab('sheets')"
+          class="inline-flex shrink-0 items-center justify-center rounded-xl bg-amber-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-amber-700 cursor-pointer"
+        >
+          Conectar Google Sheets ahora
+        </button>
+      </div>
+
       <!-- ================================================================= -->
       <!-- TAB 1: GENERADOR DE LINKS DE INVITADOS CON PASES                  -->
       <!-- ================================================================= -->
