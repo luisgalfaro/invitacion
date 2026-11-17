@@ -1,0 +1,12 @@
+---
+import Layout from '../layouts/Layout.astro';
+import AdminDashboard from '../components/AdminDashboard.vue';
+---
+
+<Layout
+  title="Panel Administrador | Invitación XV Años y Bodas"
+  description="Configura colores, textos, imágenes desde Drive, links de invitados con pases y revisa confirmaciones de Google Sheets."
+>
+  <AdminDashboard client:only="vue" />
+</Layout>
+
